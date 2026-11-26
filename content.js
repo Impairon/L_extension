@@ -24,9 +24,15 @@ function applyLoweryRules() {
         restoreImage(img);
         return;
       }
-      if (img.dataset.loweryBlocked === "true") return;
-      const url = img.currentSrc || img.src || img.getAttribute("src") || "";
-      if (!url || !matchers.some(matcher => matcher.test(url))) return;
+      const url = img.dataset.loweryBlocked === "true"
+        ? (img.dataset.loweryOriginalSrc || "")
+        : (img.currentSrc || img.src || img.getAttribute("src") || "");
+      const matches = !!url && matchers.some(matcher => matcher.test(url));
+      if (img.dataset.loweryBlocked === "true") {
+        if (!matches) restoreImage(img);
+        return;
+      }
+      if (!matches) return;
       img.dataset.loweryHadSrc = img.hasAttribute("src") ? "1" : "0";
       img.dataset.loweryHadSrcset = img.hasAttribute("srcset") ? "1" : "0";
       img.dataset.loweryOriginalSrc = img.getAttribute("src") || "";
