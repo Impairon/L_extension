@@ -13,7 +13,8 @@ function globToRegex(pattern) {
 }
 
 function isVolatileSegment(segment) {
-  return /^(?:v?\d{6,}|[a-f0-9]{16,}|[a-f0-9]{8}-[a-f0-9-]{20,}|[0-9]{4,})$/i.test(segment);
+  return /^(?:v?\d{4,}|[a-f0-9]{12,}|[a-f0-9]{8}-[a-f0-9-]{20,}|[a-z0-9_-]{6,})$/i.test(segment) &&
+    (/\d/.test(segment) || /^[a-f0-9]{12,}$/i.test(segment));
 }
 
 function makeSmartPattern(rawUrl) {
@@ -24,14 +25,20 @@ function makeSmartPattern(rawUrl) {
   });
   if (!segments.length) return "*://" + host + "/*";
 
-  const semantic = /^(profile|avatar|avatars|photo|photos|picture|pictures|image|images|media|upload|uploads|video|videos|clip|clips|reel|reels|stream|attachment|attachments)(?:[-_.]|$)/i;
-  const semanticIndex = segments.findIndex(segment => semantic.test(segment));
+  const specific = /^(profile|avatar|avatars|photo|photos|picture|pictures)(?:[-_.]|$)/i;
+  let index = segments.findIndex(segment => specific.test(segment));
+  let token = index >= 0 ? segments[index].match(/^(profile|avatars?|photos?|pictures?)/i)[0] : "";
+  if (index < 0) {
+    const mediaRoute = /^(image|images|media|upload|uploads|video|videos|clip|clips|reel|reels|stream|attachment|attachments)(?:[-_.]|$)/i;
+    index = segments.findIndex(segment => mediaRoute.test(segment));
+    if (index >= 0) token = segments[index].match(/^(images?|media|uploads?|videos?|clips?|reels?|stream|attachments?)/i)[0];
+  }
 
-  if (semanticIndex >= 0) {
-    const token = segments[semanticIndex].match(/^(profile|avatars?|photos?|pictures?|images?|media|uploads?|videos?|clips?|reels?|stream|attachments?)/i)?.[0] || segments[semanticIndex];
-    let prefix = segments.slice(0, semanticIndex);
+  if (index >= 0) {
+    let prefix = segments.slice(0, index);
     while (prefix.length && isVolatileSegment(prefix[prefix.length - 1])) prefix.pop();
     const route = prefix.length ? prefix.join("/") + "/" : "";
+    if (!route) return "*://" + host + "/" + token + "/*";
     return "*://" + host + "/" + route + "*" + token + "*";
   }
 
