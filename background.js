@@ -26,7 +26,7 @@ function globToRegex(pattern) {
 
 function isVolatileSegment(segment) {
   const clean = segment.split(";")[0];
-  return VOLATILE.test(clean) || /^[0-9a-f]{8,}$/i.test(clean) || (/^(?=.*[a-z])(?=.*\\d)[a-z0-9]{6,32}$/i.test(clean));
+  return VOLATILE.test(clean) || /^[0-9a-f]{8,}$/i.test(clean) || (/^(?=.*[a-z])(?=.*\d)[a-z0-9]{6,32}$/i.test(clean));
 }
 
 function safeDecode(segment) {
@@ -65,14 +65,14 @@ function makeSmartPattern(rawUrl) {
   let pathParts;
   if (routeIndex >= 0) {
     pathParts = segments.slice(0, routeIndex + 1).map((part, index) => {
-      if (index < routeIndex && (isVolatileSegment(part) || /^\\d+$/.test(part) && part.length < 4)) return "*";
+      if (index < routeIndex && (isVolatileSegment(part) || /^\d+$/.test(part) && part.length < 4)) return "*";
       return part;
     });
     // Retain useful folders after the media route (e.g. uploads/posts),
     // but stop at the first likely ID or generated filename.
     for (const part of segments.slice(routeIndex + 1)) {
-      if (isVolatileSegment(part) || /^\\d+$/.test(part)) break;
-      if (/\\.[a-z0-9]{2,5}$/i.test(part) && IMAGE_EXTENSIONS.has(part.split(".").pop().toLowerCase())) break;
+      if (isVolatileSegment(part) || /^\d+$/.test(part)) break;
+      if (/\.[a-z0-9]{2,5}$/i.test(part) && IMAGE_EXTENSIONS.has(part.split(".").pop().toLowerCase())) break;
       pathParts.push(part);
     }
     pathParts.push("*");
