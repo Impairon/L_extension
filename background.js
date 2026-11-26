@@ -112,6 +112,17 @@ function blinkRequestPath(path) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "LOWERY_SET_ENABLED") {
+    (async () => {
+      await chrome.storage.local.set({ loweryEnabled: message.enabled !== false });
+      await syncStoredRules();
+      sendResponse({ ok: true });
+    })().catch(error => {
+      console.warn("[Lowery] Could not change blocking state:", error);
+      sendResponse({ ok: false, error: String(error) });
+    });
+    return true;
+  }
   if (message?.type !== "BLINK_API") return;
   const { path, method = "GET", body } = message;
   fetch(blinkRequestPath(path), {
