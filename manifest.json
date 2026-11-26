@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Lowery",
   "version": "1.0.0",
-  "description": "Block avatar images with URL patterns you control.",
+  "description": "Block profile photos, post images, and matching posts with smart URL rules.",
   "icons": {
     "16": "icons/katakito.png",
     "48": "icons/katakito.png",
