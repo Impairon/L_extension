@@ -12,7 +12,7 @@ const DEFAULT_RULES = [
 const IMAGE_EXTENSIONS = new Set([
   "avif", "bmp", "gif", "ico", "jpeg", "jpg", "png", "svg", "webp", "jfif", "heic"
 ]);
-const IMAGE_ROUTE = /^(?:images?|photos?|pictures?|avatars?|profile[-_]?photos?|media|uploads?|attachments?|thumbnails?|thumbs?)(?:[-_.]|$)/i;
+const IMAGE_ROUTE = /^(?:images?|photos?|pictures?|avatars?|profile[-_]?photos?|profile[-_]?display[-_]?photos?|display[-_]?photos?|profile[-_]?images?|media|uploads?|attachments?|thumbnails?|thumbs?)(?:[-_.]|$)/i;
 const VOLATILE = /^(?:\d{3,}|v\d{3,}|[a-f0-9]{16,}|[a-f0-9]{8}-[a-f0-9-]{20,}|[a-z0-9_-]{18,})$/i;
 const GENERIC_FILE = /^(?:img|image|photo|picture|avatar|profile|thumb|thumbnail)[-_]?(?:\d+|[a-f0-9]{6,})?$/i;
 
@@ -26,7 +26,7 @@ function globToRegex(pattern) {
 
 function isVolatileSegment(segment) {
   const clean = segment.split(";")[0];
-  return VOLATILE.test(clean) || /^[0-9a-f]{8,}$/i.test(clean);
+  return VOLATILE.test(clean) || /^[0-9a-f]{8,}$/i.test(clean) || (/^(?=.*[a-z])(?=.*\\d)[a-z0-9]{6,32}$/i.test(clean));
 }
 
 function safeDecode(segment) {
@@ -64,11 +64,17 @@ function makeSmartPattern(rawUrl) {
   // Keep meaningful route names, but wildcard volatile IDs and generated filenames.
   let pathParts;
   if (routeIndex >= 0) {
-    pathParts = segments.slice(0, routeIndex + 1);
-    pathParts = pathParts.map((part, index) => {
-      if (index < routeIndex && isVolatileSegment(part)) return "*";
+    pathParts = segments.slice(0, routeIndex + 1).map((part, index) => {
+      if (index < routeIndex && (isVolatileSegment(part) || /^\\d+$/.test(part) && part.length < 4)) return "*";
       return part;
     });
+    // Retain useful folders after the media route (e.g. uploads/posts),
+    // but stop at the first likely ID or generated filename.
+    for (const part of segments.slice(routeIndex + 1)) {
+      if (isVolatileSegment(part) || /^\\d+$/.test(part)) break;
+      if (/\\.[a-z0-9]{2,5}$/i.test(part) && IMAGE_EXTENSIONS.has(part.split(".").pop().toLowerCase())) break;
+      pathParts.push(part);
+    }
     pathParts.push("*");
   } else if (isImageFile) {
     pathParts = segments.slice(0, -1).map(part => isVolatileSegment(part) ? "*" : part);
