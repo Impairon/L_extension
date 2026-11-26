@@ -10,7 +10,12 @@
   },
   "action": {
     "default_title": "Lowery",
-    "default_popup": "index.html"
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "icons/katakito.png",
+      "32": "icons/katakito.png",
+      "48": "icons/katakito.png"
+    }
   },
   "background": {
     "service_worker": "background.js",
