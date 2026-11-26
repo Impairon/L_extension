@@ -63,7 +63,12 @@ function makeSmartPattern(rawUrl) {
 
   // Keep meaningful route names, but wildcard volatile IDs and generated filenames.
   let pathParts;
-  if (routeIndex >= 0) {
+  if (routeIndex === segments.length - 1 && isImageFile) {
+    const stem = last.slice(0, -(extension.length + 1));
+    const semanticStem = stem.match(/^(avatar|profile|photo|image|img|thumb|thumbnail)[-_]/i)?.[0];
+    pathParts = segments.slice(0, -1);
+    pathParts.push((semanticStem || "*") + "*." + extension);
+  } else if (routeIndex >= 0) {
     pathParts = segments.slice(0, routeIndex + 1).map((part, index) => {
       if (index < routeIndex && (isVolatileSegment(part) || /^\d+$/.test(part) && part.length < 4)) return "*";
       return part;
