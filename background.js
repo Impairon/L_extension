@@ -12,7 +12,8 @@ const DEFAULT_RULES = [
 const IMAGE_EXTENSIONS = new Set([
   "avif", "bmp", "gif", "ico", "jpeg", "jpg", "png", "svg", "webp", "jfif", "heic"
 ]);
-const IMAGE_ROUTE = /^(?:images?|photos?|pictures?|avatars?|profile[-_]?photos?|profile[-_]?display[-_]?photos?|display[-_]?photos?|profile[-_]?images?|media|uploads?|attachments?|thumbnails?|thumbs?)(?:[-_.]|$)/i;
+const SPECIFIC_IMAGE_ROUTE = /^(?:avatars?|profile[-_]?photos?|profile[-_]?displayphotos?|displayphotos?|profile[-_]?images?|photos?|pictures?|thumbnails?|thumbs?)(?:[-_.]|$)/i;
+const GENERIC_IMAGE_ROUTE = /^(?:images?|media|uploads?|attachments?)(?:[-_.]|$)/i;
 const VOLATILE = /^(?:\d{3,}|v\d{3,}|[a-f0-9]{16,}|[a-f0-9]{8}-[a-f0-9-]{20,}|[a-z0-9_-]{18,})$/i;
 const GENERIC_FILE = /^(?:img|image|photo|picture|avatar|profile|thumb|thumbnail)[-_]?(?:\d+|[a-f0-9]{6,})?$/i;
 
@@ -50,7 +51,8 @@ function makeSmartPattern(rawUrl) {
   const isImageFile = IMAGE_EXTENSIONS.has(extension);
 
   // Find the strongest semantic image route, not just any occurrence of "media".
-  let routeIndex = segments.findIndex(segment => IMAGE_ROUTE.test(segment));
+  let routeIndex = segments.findIndex(segment => SPECIFIC_IMAGE_ROUTE.test(segment));
+  if (routeIndex < 0) routeIndex = segments.findIndex(segment => GENERIC_IMAGE_ROUTE.test(segment));
   if (routeIndex < 0) {
     // Some CDNs put transformation directives before the actual asset path.
     routeIndex = segments.findIndex(segment => /^(?:image|img|photo|avatar)[-_]/i.test(segment));
