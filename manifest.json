@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Lowery",
   "version": "1.0.0",
-  "description": "Block profile photos, post images, and matching posts with smart URL rules.",
+  "description": "Block images and videos using smart URL patterns.",
   "icons": {
     "16": "icons/katakito.png",
     "48": "icons/katakito.png",
@@ -21,22 +21,12 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ],
   "permissions": [
     "storage",
     "activeTab",
     "contextMenus",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"
