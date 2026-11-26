@@ -68,7 +68,7 @@ function makeSmartPattern(rawUrl) {
   if (routeIndex === segments.length - 1 && isImageFile) {
     const stem = last.slice(0, -(extension.length + 1));
     const semanticStem = stem.match(/^(avatar|profile|photo|image|img|thumb|thumbnail)[-_]/i)?.[0];
-    pathParts = segments.slice(0, -1);
+    pathParts = segments.slice(0, -1).map(part => isVolatileSegment(part) ? "*" : part);
     pathParts.push((semanticStem || "*") + "*." + extension);
   } else if (routeIndex >= 0) {
     pathParts = segments.slice(0, routeIndex + 1).map((part, index) => {
