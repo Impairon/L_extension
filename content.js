@@ -32,7 +32,7 @@ function restorePhoto(img) {
   delete img.dataset.loweryOriginalSrcset;
 }
 function postContainerFor(img) {
-  return img.closest('article,[role="article"],[data-testid*="post"],[data-pagelet*="FeedUnit"]');
+  return img.closest('article,[role="article"],[data-testid*="post"],[data-testid*="tweet"],[data-pagelet*="FeedUnit"],[data-ad-preview]');
 }
 let loweryApplying = false;
 async function applyLoweryRules() {
