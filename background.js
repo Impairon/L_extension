@@ -27,10 +27,16 @@ async function syncStoredRules() {
 function makeSmartPattern(rawUrl) {
   const url = new URL(rawUrl);
   const segments = url.pathname.split("/").filter(Boolean);
-  const index = segments.findIndex(segment => /profile|avatar|photo|picture|image|media|upload/i.test(segment));
-  if (index >= 0) {
-    const stablePart = (segments[index].match(/^(profile|avatar|photo|picture|image|media|upload)/i) || [segments[index]])[0];
-    const prefix = segments.slice(0, index);
+  const semanticIndex = segments.findIndex(segment => /profile|avatar|photo|picture/i.test(segment));
+  if (semanticIndex >= 0) {
+    const stablePart = (segments[semanticIndex].match(/^(profile|avatar|photo|picture)/i) || [segments[semanticIndex]])[0];
+    const prefix = segments.slice(0, Math.max(0, semanticIndex - 1));
+    return "*://" + url.hostname + "/" + (prefix.length ? prefix.join("/") + "/" : "") + "*/" + stablePart + "*";
+  }
+  const mediaIndex = segments.findIndex(segment => /image|media|upload/i.test(segment));
+  if (mediaIndex >= 0) {
+    const prefix = segments.slice(0, mediaIndex);
+    const stablePart = (segments[mediaIndex].match(/^(image|media|upload)/i) || [segments[mediaIndex]])[0];
     return "*://" + url.hostname + "/" + (prefix.length ? prefix.join("/") + "/" : "") + "*" + stablePart + "*";
   }
   const slash = url.pathname.lastIndexOf("/");
