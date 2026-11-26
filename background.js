@@ -1,1 +1,102 @@
-var e=`https://core.blink.new/api`,t=`blnk_pk_vfRDduQdwnIgNQHiNu4e9h-32fbkJyj-`;function n(t){return`${e}/${String(t).replace(/^https?:\/\/[^/]+\/api\//,``).replace(/^\/?(api\/)?/,``)}`}var r=[{pattern:`*://*.googleusercontent.com/*=s*-c`,custom:!1},{pattern:`*://*.gravatar.com/avatar/*`,custom:!1},{pattern:`*://avatars.githubusercontent.com/*`,custom:!1},{pattern:`*://cdn.discordapp.com/avatars/*`,custom:!1},{pattern:`*://*.fbcdn.net/*`,custom:!1}];function i(e){return`^${e.replace(/[.+?^${}()|[\]\\]/g,`\\$&`).replace(/\*/g,`.*`)}$`}async function a(e=r){let t=await chrome.declarativeNetRequest.getDynamicRules();await chrome.declarativeNetRequest.updateDynamicRules({removeRuleIds:t.filter(e=>e.id>=1e3&&e.id<6e3).map(e=>e.id),addRules:e.slice(0,1e3).map((e,t)=>({id:1e3+t,priority:1,action:{type:`block`},condition:{regexFilter:i(e.pattern),resourceTypes:[`image`]}}))})}chrome.runtime.onInstalled.addListener(()=>{chrome.contextMenus.create({id:`lowery-add-avatar-pattern`,title:`Block this avatar URL pattern with Lowery`,contexts:[`image`]}),chrome.storage.local.get(`loweryRules`).then(({loweryRules:e})=>{let t=e||r;return e||chrome.storage.local.set({loweryRules:t}),a(t)}).catch(e=>console.warn(`[Lowery] Could not initialize rules:`,e))}),chrome.storage.onChanged.addListener((e,t)=>{t===`local`&&e.loweryRules&&a(e.loweryRules.newValue||r).catch(e=>console.warn(`[Lowery] Could not update blocking rules:`,e))}),chrome.contextMenus.onClicked.addListener(async e=>{if(!(e.menuItemId!==`lowery-add-avatar-pattern`||!e.srcUrl))try{let t=new URL(e.srcUrl),n=t.pathname.lastIndexOf(`/`),i=`*://${t.hostname}${t.pathname.slice(0,n+1)}*`,{loweryRules:a=r}=await chrome.storage.local.get(`loweryRules`);a.some(e=>e.pattern===i)||await chrome.storage.local.set({loweryRules:[...a,{pattern:i,custom:!0}]})}catch(e){console.warn(`[Lowery] Could not add image pattern:`,e)}}),chrome.runtime.onMessage.addListener((e,r,i)=>{if(e?.type!==`BLINK_API`)return;let{path:a,method:o=`GET`,body:s}=e;return fetch(n(a),{method:o,headers:{"Content-Type":`application/json`,"x-blink-publishable-key":t,...o===`POST`||o===`PATCH`?{Prefer:`return=representation`}:{}},...s?{body:JSON.stringify(s)}:{}}).then(async e=>{let t=await e.text(),n=t;try{n=JSON.parse(t)}catch{}i({ok:e.ok,status:e.status,data:n})}).catch(e=>{console.error(`[background] BLINK_API request failed:`,e),i({ok:!1,status:0,data:String(e)})}),!0});
+const BLINK_API = "https://core.blink.new/api";
+const BLINK_KEY = "blnk_pk_vfRDduQdwnIgNQHiNu4e9h-32fbkJyj-";
+const DEFAULT_RULES = [
+  { pattern: "*://*.googleusercontent.com/*=s*-c", custom: false },
+  { pattern: "*://*.gravatar.com/avatar/*", custom: false },
+  { pattern: "*://avatars.githubusercontent.com/*", custom: false },
+  { pattern: "*://cdn.discordapp.com/avatars/*", custom: false },
+  { pattern: "*://*.fbcdn.net/*", custom: false }
+];
+
+function wildcardRegex(pattern) {
+  return "^" + pattern.replace(/[.+?^{}$()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$";
+}
+
+async function applyRules(rules = DEFAULT_RULES, enabled = true) {
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const removeRuleIds = existing.filter(rule => rule.id >= 1000 && rule.id < 6000).map(rule => rule.id);
+  const addRules = enabled ? rules.slice(0, 1000).map((rule, index) => ({
+    id: 1000 + index,
+    priority: 1,
+    action: { type: "block" },
+    condition: { regexFilter: wildcardRegex(rule.pattern), resourceTypes: ["image"] }
+  })) : [];
+  await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules });
+}
+
+async function syncStoredRules() {
+  const data = await chrome.storage.local.get({ loweryRules: DEFAULT_RULES, loweryEnabled: true });
+  await applyRules(Array.isArray(data.loweryRules) ? data.loweryRules : DEFAULT_RULES, data.loweryEnabled !== false);
+}
+
+function makeSmartPattern(rawUrl) {
+  const url = new URL(rawUrl);
+  const segments = url.pathname.split("/").filter(Boolean);
+  const index = segments.findIndex(segment => /profile|avatar|photo|picture/i.test(segment));
+  if (index > 0) {
+    const prefix = segments.slice(0, index - 1);
+    const stablePart = (segments[index].match(/^(profile|avatar|photo|picture)/i) || [segments[index]])[0];
+    return "*://" + url.hostname + "/" + (prefix.length ? prefix.join("/") + "/" : "") + "*/" + stablePart + "*";
+  }
+  const slash = url.pathname.lastIndexOf("/");
+  return "*://" + url.hostname + url.pathname.slice(0, slash + 1) + "*";
+}
+
+chrome.runtime.onInstalled.addListener(async () => {
+  chrome.contextMenus.create({
+    id: "lowery-add-avatar-pattern",
+    title: "Block this avatar URL pattern with Lowery",
+    contexts: ["image"]
+  });
+  await syncStoredRules().catch(error => console.warn("[Lowery] Could not initialize rules:", error));
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  syncStoredRules().catch(error => console.warn("[Lowery] Could not restore rules:", error));
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && (changes.loweryRules || changes.loweryEnabled)) {
+    syncStoredRules().catch(error => console.warn("[Lowery] Could not update blocking rules:", error));
+  }
+});
+
+chrome.contextMenus.onClicked.addListener(async info => {
+  if (info.menuItemId !== "lowery-add-avatar-pattern" || !info.srcUrl) return;
+  try {
+    const pattern = makeSmartPattern(info.srcUrl);
+    const { loweryRules = DEFAULT_RULES } = await chrome.storage.local.get({ loweryRules: DEFAULT_RULES });
+    if (!loweryRules.some(rule => rule.pattern === pattern)) {
+      await chrome.storage.local.set({ loweryRules: [...loweryRules, { pattern, custom: true }] });
+    }
+  } catch (error) {
+    console.warn("[Lowery] Could not add image pattern:", error);
+  }
+});
+
+function blinkRequestPath(path) {
+  return BLINK_API + "/" + String(path).replace(/^https?:\/\/[^/]+\/api\//, "").replace(/^\/?(api\/)?/, "");
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== "BLINK_API") return;
+  const { path, method = "GET", body } = message;
+  fetch(blinkRequestPath(path), {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "x-blink-publishable-key": BLINK_KEY,
+      ...(method === "POST" || method === "PATCH" ? { Prefer: "return=representation" } : {})
+    },
+    ...(body ? { body: JSON.stringify(body) } : {})
+  }).then(async response => {
+    const text = await response.text();
+    let data = text;
+    try { data = JSON.parse(text); } catch {}
+    sendResponse({ ok: response.ok, status: response.status, data });
+  }).catch(error => {
+    console.error("[background] BLINK_API request failed:", error);
+    sendResponse({ ok: false, status: 0, data: String(error) });
+  });
+  return true;
+});
